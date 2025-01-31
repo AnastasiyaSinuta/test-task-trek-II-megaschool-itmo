@@ -11,6 +11,3 @@ COPY . .
 RUN chmod +x start.sh
 
 CMD ["bash", "./start.sh"]
-
-FROM nginx
-COPY nginx.conf /etc/ngin/nginx.conf

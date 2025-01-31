@@ -3,7 +3,7 @@ version: "3.8"
 services:
   fastapi-service:
     build: .
-    container_name: test-task-trek-II-megaschool-itmo
+    container_name: fastapi-baseline
     ports:
       - "8080:8080"
     restart: unless-stopped
@@ -11,12 +11,3 @@ services:
       - TZ=UTC
     volumes:
       - ./logs:/app/logs
-  nginx:
-    ports:
-      - "80:80"
-      - "443:443"
-    networks:
-      - backend
-networks:
-  backend:
-    driver: bridge

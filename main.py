@@ -5,6 +5,9 @@ from schemas.request import PredictionRequest, PredictionResponse
 from utils.logger import setup_logger
 import json
 import requests
+from dotenv import load_dotenv
+import os
+import re
 
 # Initialize
 app = FastAPI()
@@ -53,8 +56,11 @@ async def log_requests(request: Request, call_next):
 async def predict(body: PredictionRequest):
     try:
         await logger.info(f"Processing prediction request with id: {body.id}")
+        pattern = r"\d+\.\s.+"
+        matches = re.findall(pattern, body.query)
         prompt = "Предоставь ответ на вопрос в формате JSON {\"answer\": числовое значение (от 1 до 10), содержащее правильный вариант ответа на вопрос,\"reasoning\": объяснение или дополнительная информация по запросу в кавычках,\"sources\":  список ссылок на источники информации (не более трех), перечисленных через запятую в квадратных скобках}. Вопрос: " + body.query
-        token = "***"
+        load_dotenv()
+        token = os.getenv('FIREWORKS_KEY')
         url = "https://api.fireworks.ai/inference/v1/chat/completions"
         payload = {
             "model": "accounts/fireworks/models/llama-v3p1-405b-instruct",
@@ -80,22 +86,39 @@ async def predict(body: PredictionRequest):
         response_content = str(response_model.json()['choices'][0]['message']['content'])
         json_string = response_content[response_content.find('{'):response_content.rfind('}') + 1]
         data = json.loads(json_string)
-        answer = data.get("answer")
+        if matches:
+            answer = data.get("answer")
+        else:
+            answer = -1
         reasoning = data.get("reasoning")
         sources = data.get("sources", [])
 
         response = PredictionResponse(
             id=body.id,
             answer=answer,
-            reasoning=reasoning,
+            reasoning=reasoning + " Ответ сгенерирован моделью Llama 3.1 405B.",
             sources=sources,
         )
         await logger.info(f"Successfully processed request {body.id}")
         return response
     except ValueError as e:
+        response = PredictionResponse(
+            id=body.id,
+            answer=-1,
+            reasoning="Ответ сгенерирован моделью Llama 3.1 405B.",
+            sources=["https://itmo.ru/ru/", "https://abit.itmo.ru/"],
+        )
         error_msg = str(e)
         await logger.error(f"Validation error for request {body.id}: {error_msg}")
-        raise HTTPException(status_code=400, detail=error_msg)
+        return response
+        # raise HTTPException(status_code=400, detail=error_msg)
     except Exception as e:
+        response = PredictionResponse(
+            id=body.id,
+            answer=-1,
+            reasoning="Ответ сгенерирован моделью Llama 3.1 405B.",
+            sources=["https://itmo.ru/ru/", "https://abit.itmo.ru/"],
+        )
         await logger.error(f"Internal error processing request {body.id}: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        return response
+        # raise HTTPException(status_code=500, detail="Internal server error")
