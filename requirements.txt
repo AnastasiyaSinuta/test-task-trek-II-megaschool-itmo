@@ -1,0 +1,6 @@
+fastapi~=0.115.8
+aiologger[aiofiles]~=0.7.0
+pip-chill
+uvicorn
+gunicorn
+requests~=2.32.3
